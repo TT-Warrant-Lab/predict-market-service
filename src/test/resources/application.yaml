@@ -1,0 +1,24 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:market;MODE=PostgreSQL;DB_CLOSE_DELAY=-1
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+  kafka:
+    bootstrap-servers: localhost:65535
+
+app:
+  security:
+    internal-key: test-internal-key
+  predict-core:
+    base-url: http://localhost:8005
+
+redis:
+  host: localhost
+  port: 6379
+  password: ""
+  database: 0
+  timeout: 200
