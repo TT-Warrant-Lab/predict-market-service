@@ -1,9 +1,11 @@
-FROM eclipse-temurin:17-jdk-jammy AS builder
+FROM eclipse-temurin:25-jdk-jammy AS builder
 WORKDIR /app
 
 COPY build.gradle settings.gradle gradlew ./
 COPY gradle ./gradle
-RUN chmod +x gradlew
+# Repositories cloned on Windows can retain CRLF here; Linux cannot execute
+# a shell script whose shebang ends in \r.
+RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew dependencies --console=plain --no-daemon
 
@@ -11,7 +13,7 @@ COPY src ./src
 RUN --mount=type=cache,target=/root/.gradle \
     ./gradlew bootJar -x test --console=plain --no-daemon
 
-FROM eclipse-temurin:17-jre-jammy
+FROM eclipse-temurin:25-jre-jammy
 WORKDIR /app
 ENV TZ=Asia/Ho_Chi_Minh
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime \

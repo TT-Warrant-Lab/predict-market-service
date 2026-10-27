@@ -10,7 +10,7 @@ version = '0.0.1-SNAPSHOT'
 description = 'predict-market-service'
 
 java {
-  toolchain { languageVersion = JavaLanguageVersion.of(17) }
+  toolchain { languageVersion = JavaLanguageVersion.of(25) }
 }
 
 repositories { mavenCentral() }
