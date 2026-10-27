@@ -27,6 +27,17 @@ app:
     internal-key: ${APP_INTERNAL_KEY:}
   predict-core:
     base-url: ${APP_PREDICT_CORE_BASE_URL:http://localhost:8005}
+  mas-realtime:
+    enabled: ${MAS_DIRECT_SUBSCRIBER_ENABLED:true}
+    websocket-url: ${MAS_WS_URL:wss://masboard.masvn.com/ws/}
+    origin: ${MAS_WS_ORIGIN:https://masboard.masvn.com}
+    cookie: ${MAS_WS_COOKIE:}
+    auth-token: ${MAS_WS_AUTH_TOKEN:}
+    subscription-batch-size: ${MAS_WS_SUBSCRIPTION_BATCH_SIZE:20}
+    max-symbols: ${MAS_WS_MAX_SYMBOLS:0}
+    reconnect-initial-delay-ms: ${MAS_WS_RECONNECT_INITIAL_DELAY_MS:1000}
+    reconnect-max-delay-ms: ${MAS_WS_RECONNECT_MAX_DELAY_MS:30000}
+    trace-enabled: ${MAS_WS_TRACE_ENABLED:false}
   static-data:
     sync-dir: ${APP_STATIC_DATA_SYNC_DIR:data/static}
 config:

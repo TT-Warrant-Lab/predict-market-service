@@ -1,12 +1,12 @@
 package com.fadx.predict_market_service.modules.market.web;
 
+import com.fadx.predict_market_service.modules.common.enums.EndpointType;
+import com.fadx.predict_market_service.modules.common.services.ICallApiService;
+import com.fadx.predict_market_service.modules.market.api.dtos.stock.ForeignHistoryRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyEventRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyNewsRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyOverviewRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyProfileRecord;
-import com.fadx.predict_market_service.modules.market.api.dtos.stock.ForeignHistoryRecord;
-import com.fadx.predict_market_service.modules.common.enums.EndpointType;
-import com.fadx.predict_market_service.modules.common.services.ICallApiService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.HashMap;
 import java.util.List;

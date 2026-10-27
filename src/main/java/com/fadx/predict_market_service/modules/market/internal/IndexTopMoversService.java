@@ -1,8 +1,8 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
 import com.fadx.predict_market_service.core.api.RealtimePublisher;
-import com.fadx.predict_market_service.modules.market.api.dtos.MarketStatusResponse;
 import com.fadx.predict_market_service.modules.common.repositories.StockMarketLatestRepository;
+import com.fadx.predict_market_service.modules.market.api.dtos.MarketStatusResponse;
 import com.fadx.predict_market_service.modules.symbol.internal.entity.Symbol;
 import com.fadx.predict_market_service.modules.symbol.internal.repositories.SymbolRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -278,8 +278,8 @@ public class IndexTopMoversService {
     List<String> allSymbols =
         symbolsByIndex.values().stream().flatMap(List::stream).distinct().toList();
     Map<String, String> rawQuotesBySymbol = new LinkedHashMap<>();
-    Map<String, com.fadx.predict_market_service.modules.common.entity.StockMarketLatest> latestByTicker =
-        new LinkedHashMap<>();
+    Map<String, com.fadx.predict_market_service.modules.common.entity.StockMarketLatest>
+        latestByTicker = new LinkedHashMap<>();
     stockMarketLatestRepository
         .findByTradingDateAndMarketIn(tradingDate, List.of("HOSE", "HNX"))
         .forEach(latest -> latestByTicker.put(normalize(latest.getTicker()), latest));

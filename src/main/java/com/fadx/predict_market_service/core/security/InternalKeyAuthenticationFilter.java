@@ -55,8 +55,7 @@ public class InternalKeyAuthenticationFilter extends OncePerRequestFilter {
 
     SecurityContextHolder.getContext()
         .setAuthentication(
-            UsernamePasswordAuthenticationToken.authenticated(
-                "predict-service", null, List.of()));
+            UsernamePasswordAuthenticationToken.authenticated("predict-service", null, List.of()));
     chain.doFilter(request, response);
   }
 

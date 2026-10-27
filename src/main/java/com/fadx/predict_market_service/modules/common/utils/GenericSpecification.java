@@ -2,11 +2,11 @@ package com.fadx.predict_market_service.modules.common.utils;
 
 import static com.fadx.predict_market_service.modules.market.api.enums.Operator.BETWEEN;
 
+import com.fadx.predict_market_service.modules.common.entity.CWAnalysis;
 import com.fadx.predict_market_service.modules.market.api.dtos.FilterCriteria;
 import com.fadx.predict_market_service.modules.market.api.dtos.SortCriteria;
 import com.fadx.predict_market_service.modules.market.api.enums.Operator;
 import com.fadx.predict_market_service.modules.market.api.enums.SortDirection;
-import com.fadx.predict_market_service.modules.common.entity.CWAnalysis;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.Expression;
 import jakarta.persistence.criteria.Path;

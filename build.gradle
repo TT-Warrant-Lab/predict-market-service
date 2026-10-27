@@ -2,6 +2,7 @@ plugins {
   id 'java'
   id 'org.springframework.boot' version '4.1.2'
   id 'io.spring.dependency-management' version '1.1.7'
+  id 'com.diffplug.spotless' version '8.0.0'
 }
 
 group = 'com.fadx'
@@ -13,6 +14,14 @@ java {
 }
 
 repositories { mavenCentral() }
+
+spotless {
+  java {
+    googleJavaFormat()
+    trimTrailingWhitespace()
+    endWithNewline()
+  }
+}
 
 dependencies {
   implementation 'org.springframework.boot:spring-boot-starter-actuator'
@@ -27,6 +36,9 @@ dependencies {
   implementation 'redis.clients:jedis:7.5.2'
   implementation 'com.fasterxml.jackson.core:jackson-databind:2.21.0'
   implementation 'com.fasterxml.jackson.datatype:jackson-datatype-jsr310:2.21.0'
+  // MAS SocketCluster frames are MessagePack. This belongs to the market-ingestion service,
+  // not predict-service (which no longer runs a browser scraper).
+  implementation 'org.msgpack:msgpack-core:0.9.8'
   compileOnly 'org.projectlombok:lombok'
   runtimeOnly 'org.postgresql:postgresql'
   annotationProcessor 'org.projectlombok:lombok'

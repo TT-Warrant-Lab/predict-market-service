@@ -1,7 +1,6 @@
 package com.fadx.predict_market_service.modules.market.api.dtos.market;
 
 import com.fadx.predict_market_service.modules.market.api.dtos.IndexChangeRecord;
-
 import java.util.List;
 
 public record SymbolQuoteRecord(

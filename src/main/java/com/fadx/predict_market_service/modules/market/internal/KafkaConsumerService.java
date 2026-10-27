@@ -1,7 +1,6 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
 import com.fadx.predict_market_service.core.api.RealtimePublisher;
-import com.fadx.predict_market_service.modules.market.api.dtos.ForeignChartPointDto;
 import com.fadx.predict_market_service.modules.common.dto.TickerChartPointDto;
 import com.fadx.predict_market_service.modules.common.entity.StockMarketLatest;
 import com.fadx.predict_market_service.modules.common.entity.SymbolMatchHistory;
@@ -10,6 +9,7 @@ import com.fadx.predict_market_service.modules.common.repositories.StockMarketLa
 import com.fadx.predict_market_service.modules.common.repositories.SymbolMatchHistoryRepository;
 import com.fadx.predict_market_service.modules.common.repositories.SymbolPriceHisRepository;
 import com.fadx.predict_market_service.modules.common.services.IndexMembershipService;
+import com.fadx.predict_market_service.modules.market.api.dtos.ForeignChartPointDto;
 import com.fadx.predict_market_service.modules.symbol.internal.entity.Symbol;
 import com.fadx.predict_market_service.modules.symbol.internal.repositories.SymbolRepository;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -113,8 +113,8 @@ public class KafkaConsumerService {
   /**
    * Receives strategy signals emitted by strategy-engine.
    *
-   * <p>The signal contract has not been finalized in this repository, so the message is parsed as
-   * a JSON tree and kept intact. This prevents predict-service from silently dropping fields that
+   * <p>The signal contract has not been finalized in this repository, so the message is parsed as a
+   * JSON tree and kept intact. This prevents predict-service from silently dropping fields that
    * strategy-engine may add before a shared, versioned contract is introduced.
    */
   @KafkaListener(topics = STRATEGY_SIGNALS_TOPIC, groupId = "prediction-group")
@@ -193,8 +193,8 @@ public class KafkaConsumerService {
   /**
    * Publishes a notification for ws-gateway.
    *
-   * <p>Kafka key is the normalized user email so all notifications for one user remain ordered.
-   * The JSON value contract is: {@code {"user":"a@x.com","payload":{...}}}.
+   * <p>Kafka key is the normalized user email so all notifications for one user remain ordered. The
+   * JSON value contract is: {@code {"user":"a@x.com","payload":{...}}}.
    */
   public void publishUserNotification(String user, JsonNode payload) {
     if (user == null || user.isBlank()) {
