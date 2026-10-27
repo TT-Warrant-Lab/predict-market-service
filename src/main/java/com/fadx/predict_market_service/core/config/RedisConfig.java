@@ -3,7 +3,6 @@ package com.fadx.predict_market_service.core.config;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
 
@@ -58,8 +57,4 @@ public class RedisConfig {
   }
 
   /** Optional: Tạo Jedis bean đơn lẻ nếu cần */
-  @Bean
-  public Jedis jedis(JedisPool jedisPool) {
-    return jedisPool.getResource();
-  }
 }

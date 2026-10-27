@@ -13,8 +13,6 @@ spring:
 app:
   security:
     internal-key: test-internal-key
-  predict-core:
-    base-url: http://localhost:8005
   mas-realtime:
     enabled: false
 

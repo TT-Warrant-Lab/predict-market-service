@@ -25,8 +25,11 @@ spring:
 app:
   security:
     internal-key: ${APP_INTERNAL_KEY:}
-  predict-core:
-    base-url: ${APP_PREDICT_CORE_BASE_URL:http://localhost:8005}
+  mas-api:
+    base-url: ${MAS_BASE_URL:https://masboard.masvn.com}
+    stock-endpoint: ${MAS_STOCK_ENDPOINT:/api/v2/vs}
+    market-endpoint: ${MAS_MARKET_ENDPOINT:/api/v1/market}
+    trading-endpoint: ${MAS_TRADING_ENDPOINT:/api/v1/tradingview}
   mas-realtime:
     enabled: ${MAS_DIRECT_SUBSCRIBER_ENABLED:true}
     websocket-url: ${MAS_WS_URL:wss://masboard.masvn.com/ws/}

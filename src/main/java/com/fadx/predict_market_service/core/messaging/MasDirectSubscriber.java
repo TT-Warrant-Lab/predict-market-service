@@ -43,10 +43,9 @@ import org.springframework.stereotype.Component;
 /**
  * Direct, single-connection MAS feed owned by predict-market-service.
  *
- * <p>This replaces predict-core's Python subscriber while preserving its important behaviour:
- * Vietnam-market schedule, SocketCluster handshake, bounded subscription batches, #1/#2 heartbeat,
- * MessagePack frames, and exponential reconnect. Market projections remain consumers of the Kafka
- * topics published here.
+ * <p>Preserves the prior subscriber's important behaviour: Vietnam-market schedule, SocketCluster
+ * handshake, bounded subscription batches, #1/#2 heartbeat, MessagePack frames, and exponential
+ * reconnect. Market projections remain consumers of the Kafka topics published here.
  */
 @Component
 @RequiredArgsConstructor
@@ -229,7 +228,7 @@ public class MasDirectSubscriber {
                 if (error != null)
                   log.warn("MAS Kafka publish failed topic={} symbol={}", topic, symbol, error);
               });
-      // Mirror predict-core's index/VN30/VN100 listeners: priority consumers receive a
+      // Priority consumers receive a
       // symbol-specific topic while normal consumers continue to receive market.quote.
       if ("market.quote".equals(topic)
           && prioritySymbols().contains(symbol.toUpperCase(Locale.ROOT))) {

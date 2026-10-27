@@ -8,7 +8,6 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +17,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.client.RestClient;
 
 @RestController
 @RequestMapping("/api/metadata/static")
@@ -27,13 +25,9 @@ import org.springframework.web.client.RestClient;
 public class StaticDataController {
 
   private final IndexTopMoversService indexTopMoversService;
-  private final RestClient.Builder restClientBuilder;
 
   @org.springframework.beans.factory.annotation.Value("${app.static-data.sync-dir:data/static}")
   private String syncDirectory;
-
-  @org.springframework.beans.factory.annotation.Value("${app.predict-core.base-url}")
-  private String predictCoreBaseUrl;
 
   private static final String INDEX_STOCK_LIST_PATH = "static/indexStockList.json";
   private static final String SYMBOL_STATIC_DATA_PATH = "static/symbol_static_data.json";
@@ -81,22 +75,7 @@ public class StaticDataController {
             .body(new org.springframework.core.io.FileSystemResource(external));
       }
       Resource resource = new ClassPathResource(classpathLocation);
-      if (!resource.exists()) {
-        byte[] remote =
-            restClientBuilder
-                .baseUrl(predictCoreBaseUrl)
-                .build()
-                .get()
-                .uri("/api/metadata/static/" + Path.of(classpathLocation).getFileName())
-                .retrieve()
-                .body(byte[].class);
-        return remote == null
-            ? ResponseEntity.status(HttpStatus.NOT_FOUND).build()
-            : ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(HttpHeaders.CACHE_CONTROL, "no-cache")
-                .body(new ByteArrayResource(remote));
-      }
+      if (!resource.exists()) return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
       return ResponseEntity.ok()
           .contentType(MediaType.APPLICATION_JSON)
           .header(HttpHeaders.CACHE_CONTROL, "no-cache")

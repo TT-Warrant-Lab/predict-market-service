@@ -1,7 +1,6 @@
 package com.fadx.predict_market_service.modules.market.web;
 
 import com.fadx.predict_market_service.modules.common.enums.MatchHistoryDay;
-import com.fadx.predict_market_service.modules.common.services.ICallApiService;
 import com.fadx.predict_market_service.modules.common.services.SymbolMatchHistoryService;
 import com.fadx.predict_market_service.modules.common.services.TradingService;
 import com.fadx.predict_market_service.modules.market.api.dtos.trading.DividendRecord;
@@ -21,7 +20,6 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Anonymous | Trading", description = "API for Trading data")
 public class TradingController {
 
-  private final ICallApiService callApiService;
   private final TradingService tradingService;
   private final SymbolMatchHistoryService symbolMatchHistoryService;
 
