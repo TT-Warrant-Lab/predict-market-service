@@ -25,7 +25,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -107,7 +106,9 @@ public class KafkaConsumerService {
             thread.setDaemon(false);
             return thread;
           },
-          new ThreadPoolExecutor.AbortPolicy());
+          // Preserve Kafka records under load: once the bounded queue is full, run the work on
+          // the listener thread and let Kafka apply backpressure instead of dropping a quote.
+          new ThreadPoolExecutor.CallerRunsPolicy());
   private static final AtomicInteger QUOTE_THREAD_NUMBER = new AtomicInteger();
 
   /**
@@ -231,24 +232,15 @@ public class KafkaConsumerService {
       return;
     }
 
-    try {
-      quoteWorkers.execute(
-          () ->
-              processQuoteInWorker(
-                  rawPayload,
-                  record.topic(),
-                  record.partition(),
-                  record.offset(),
-                  record.key(),
-                  record.headers()));
-    } catch (RejectedExecutionException e) {
-      log.error(
-          "[kafka] Quote worker queue is full; message rejected topic={} partition={} offset={}",
-          record.topic(),
-          record.partition(),
-          record.offset(),
-          e);
-    }
+    quoteWorkers.execute(
+        () ->
+            processQuoteInWorker(
+                rawPayload,
+                record.topic(),
+                record.partition(),
+                record.offset(),
+                record.key(),
+                record.headers()));
   }
 
   private void processQuoteInWorker(

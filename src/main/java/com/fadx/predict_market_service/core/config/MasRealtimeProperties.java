@@ -18,5 +18,5 @@ public class MasRealtimeProperties {
   private int maxSymbols = 0;
   private long reconnectInitialDelayMs = 1_000;
   private long reconnectMaxDelayMs = 30_000;
-  private boolean traceEnabled = false;
+  private boolean traceEnabled = true;
 }

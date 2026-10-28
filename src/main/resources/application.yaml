@@ -1,13 +1,20 @@
 server:
   port: ${SERVER_PORT:8003}
 
+logging:
+  level:
+    # Kafka can repeatedly report missing/refreshing metadata while topics settle.
+    # Keep the MAS receive trace visible without filling Docker logs with warnings.
+    org.apache.kafka.clients.NetworkClient: ERROR
+
 spring:
   application:
     name: predict-market-service
   datasource:
     url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/fadx_home}
     username: ${SPRING_DATASOURCE_USERNAME:fadx}
-    password: ${SPRING_DATASOURCE_PASSWORD:}
+    password: ${SPRING_DATASOURCE_PASSWORD:f@D*P@ss}
+    driver-class-name: org.postgresql.Driver
   jpa:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
@@ -40,7 +47,7 @@ app:
     max-symbols: ${MAS_WS_MAX_SYMBOLS:0}
     reconnect-initial-delay-ms: ${MAS_WS_RECONNECT_INITIAL_DELAY_MS:1000}
     reconnect-max-delay-ms: ${MAS_WS_RECONNECT_MAX_DELAY_MS:30000}
-    trace-enabled: ${MAS_WS_TRACE_ENABLED:false}
+    trace-enabled: ${MAS_WS_TRACE_ENABLED:true}
   static-data:
     sync-dir: ${APP_STATIC_DATA_SYNC_DIR:data/static}
 config:

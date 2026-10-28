@@ -1,14 +1,13 @@
 package com.fadx.predict_market_service.core.messaging;
 
 import com.fadx.predict_market_service.core.config.MasRealtimeProperties;
-import com.fadx.predict_market_service.modules.symbol.internal.entity.Symbol;
-import com.fadx.predict_market_service.modules.symbol.internal.repositories.SymbolRepository;
-import com.fasterxml.jackson.core.type.TypeReference;
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteSubscriptionCatalog;
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteSubscriptionRegistry;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.ByteArrayOutputStream;
-import java.io.InputStream;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.WebSocket;
@@ -18,6 +17,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -27,6 +27,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
@@ -56,11 +57,29 @@ public class MasDirectSubscriber {
   private static final LocalTime CLOSE = LocalTime.of(15, 5);
   private static final String QUOTE_PREFIX = "market.quote.";
   private static final String BIDOFFER_PREFIX = "market.bidoffer.";
+  private static final String KAFKA_QUOTE_PREFIX = "market.quote";
+  private static final String KAFKA_QUOTE_PRIORITY_PREFIX = "market.quote.priority";
+  private static final Map<String, List<String>> INDEX_MAP = new LinkedHashMap<>();
+
+  static {
+    INDEX_MAP.put(
+        "VN-INDEX",
+        new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
+    INDEX_MAP.put(
+        "VN30", new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
+    INDEX_MAP.put(
+        "VN1000", new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
+    INDEX_MAP.put(
+        "HNXINDEX",
+        new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
+    INDEX_MAP.put("HNX30", new ArrayList<>(List.of(KAFKA_QUOTE_PREFIX)));
+    INDEX_MAP.put("HNXUPCOMINDEX", new ArrayList<>(List.of(KAFKA_QUOTE_PREFIX)));
+  }
 
   private final MasRealtimeProperties properties;
-  private final SymbolRepository symbolRepository;
   private final KafkaTemplate<String, Object> kafkaTemplate;
   private final ObjectMapper objectMapper;
+  private final QuoteSubscriptionCatalog quoteSubscriptionCatalog;
   private final ScheduledExecutorService scheduler =
       Executors.newSingleThreadScheduledExecutor(r -> new Thread(r, "mas-feed-scheduler"));
   private final ExecutorService socketExecutor =
@@ -72,7 +91,8 @@ public class MasDirectSubscriber {
   private volatile WebSocket socket;
   private volatile long reconnectDelayMs;
   private volatile int requestID;
-  private volatile Set<String> prioritySymbols;
+  private final Set<String> bidofferSymbols = ConcurrentHashMap.newKeySet();
+  private volatile QuoteSubscriptionRegistry quoteSubscriptions;
 
   @PostConstruct
   void initialize() {
@@ -162,32 +182,31 @@ public class MasDirectSubscriber {
         sendEvent("#subscribe", Map.of("channel", channel));
       }
     }
+    bidofferSymbols.forEach(
+        symbol -> sendEvent("#subscribe", Map.of("channel", BIDOFFER_PREFIX + symbol)));
     log.info("MAS feed subscribed to {} channels", channels.size());
   }
 
-  private List<String> subscriptionChannels() {
-    LinkedHashSet<String> symbols = new LinkedHashSet<>();
-    symbols.addAll(prioritySymbols());
-    // MAS channel casing is significant for these two index names.
-    symbols.remove("HNXINDEX");
-    symbols.remove("HNXUPCOMINDEX");
-    symbols.add("HNXIndex");
-    symbols.add("HNXUpcomIndex");
-    try {
-      for (Symbol symbol : symbolRepository.findAll()) {
-        if (symbol.getSymbol() != null && !symbol.getSymbol().isBlank())
-          symbols.add(symbol.getSymbol().trim().toUpperCase());
-      }
-    } catch (Exception error) {
-      log.warn("Could not load symbols for MAS subscription; using indexes only", error);
+  public void updateBidoffer(Collection<String> symbols, boolean subscribe) {
+    for (String raw : symbols) {
+      String symbol = normalizeSymbol(raw);
+      if (symbol.isEmpty()) continue;
+      boolean changed = subscribe ? bidofferSymbols.add(symbol) : bidofferSymbols.remove(symbol);
+      if (changed)
+        sendEvent(
+            subscribe ? "#subscribe" : "#unsubscribe", Map.of("channel", BIDOFFER_PREFIX + symbol));
     }
+  }
+
+  private List<String> subscriptionChannels() {
+    LinkedHashSet<String> symbols = new LinkedHashSet<>(quoteSubscriptions().symbols());
     int maximum = properties.getMaxSymbols();
     List<String> selected = new ArrayList<>(symbols);
     if (maximum > 0 && selected.size() > maximum) selected = selected.subList(0, maximum);
-    List<String> result = new ArrayList<>(selected.size() * 2);
+    List<String> result = new ArrayList<>(selected.size());
     for (String symbol : selected) {
       result.add(QUOTE_PREFIX + symbol);
-      result.add(BIDOFFER_PREFIX + symbol);
+      //      result.add(BIDOFFER_PREFIX + symbol);
     }
     return result;
   }
@@ -211,63 +230,70 @@ public class MasDirectSubscriber {
           || publication.size() < 2) return;
       if (!(publication.get(0) instanceof String channel)
           || !(publication.get(1) instanceof Map<?, ?>)) return;
-      String topic =
-          channel.startsWith(BIDOFFER_PREFIX)
-              ? "market.bidoffer"
-              : channel.startsWith(QUOTE_PREFIX) ? "market.quote" : null;
-      if (topic == null) return;
+      if (!channel.startsWith(QUOTE_PREFIX) && !channel.startsWith(BIDOFFER_PREFIX)) return;
       Object symbolValue = ((Map<?, ?>) publication.get(1)).get("s");
       String symbol =
           symbolValue == null
               ? channel.substring(channel.lastIndexOf('.') + 1)
               : String.valueOf(symbolValue);
-      kafkaTemplate
-          .send(topic, symbol, payload)
-          .whenComplete(
-              (result, error) -> {
-                if (error != null)
-                  log.warn("MAS Kafka publish failed topic={} symbol={}", topic, symbol, error);
-              });
-      // Priority consumers receive a
-      // symbol-specific topic while normal consumers continue to receive market.quote.
-      if ("market.quote".equals(topic)
-          && prioritySymbols().contains(symbol.toUpperCase(Locale.ROOT))) {
-        kafkaTemplate
-            .send("market.quote." + symbol, symbol, payload)
-            .whenComplete(
-                (result, error) -> {
-                  if (error != null)
-                    log.warn("MAS priority Kafka publish failed symbol={}", symbol, error);
-                });
+
+      if (channel.startsWith(BIDOFFER_PREFIX)) {
+        if (bidofferSymbols.contains(normalizeSymbol(symbol)))
+          publish("market.bidoffer", symbol, payload);
+        return;
       }
-      trace("KAFKA-QUEUED topic=" + topic + " symbol=" + symbol);
+      switch (quoteSubscriptions().route(normalizeSymbol(symbol))) {
+        case WARRANT -> publish("market.quote.warrant", symbol, payload);
+        case PRIORITY -> {
+          publish("market.quote.priority", symbol, payload);
+          publish("market.quote", symbol, payload);
+        }
+        case COMMON -> publish("market.quote", symbol, payload);
+        case NONE -> {}
+      }
     } catch (Exception error) {
       log.warn("Ignoring malformed MAS MessagePack frame", error);
     }
   }
 
-  private void trace(String message) {
-    if (properties.isTraceEnabled()) log.info("[MAS-WS] {}", message);
+  private void publish(String topic, String symbol, Object payload) {
+    traceReceived("", topic, symbol, payload);
+    kafkaTemplate
+        .send(topic, symbol, payload)
+        .whenComplete(
+            (result, error) -> {
+              if (error != null)
+                log.error("MAS Kafka publish failed topic={} symbol={}", topic, symbol, error);
+            });
+    traceKafkaQueued(topic, symbol);
   }
 
-  private Set<String> prioritySymbols() {
-    Set<String> cached = prioritySymbols;
-    if (cached != null) return cached;
-    LinkedHashSet<String> symbols =
-        new LinkedHashSet<>(List.of("VN-INDEX", "VN30", "HNXINDEX", "HNXUPCOMINDEX"));
-    try (InputStream input = getClass().getResourceAsStream("/static/indexStockList.json")) {
-      if (input != null) {
-        Map<String, List<String>> indexes = objectMapper.readValue(input, new TypeReference<>() {});
-        for (String index : List.of("VN30", "VN100")) {
-          for (String symbol : indexes.getOrDefault(index, List.of()))
-            symbols.add(symbol.toUpperCase(Locale.ROOT));
-        }
-      }
-    } catch (Exception error) {
-      log.warn("Could not load VN30/VN100 index membership; using canonical indexes only", error);
+  private void traceReceived(String channel, String topic, String symbol, Object data) {
+    try {
+      log.info(
+          "MAS feed received channel={} topic={} symbol={} data={}",
+          channel,
+          topic,
+          symbol,
+          objectMapper.writeValueAsString(data));
+    } catch (JsonProcessingException e) {
+      log.error("Failed to serialize MAS feed data for tracing", e);
     }
-    prioritySymbols = Set.copyOf(symbols);
-    return prioritySymbols;
+  }
+
+  private void traceKafkaQueued(String topic, String symbol) {
+    log.info("MAS feed queued to Kafka topic={} symbol={}", topic, symbol);
+  }
+
+  private QuoteSubscriptionRegistry quoteSubscriptions() {
+    QuoteSubscriptionRegistry cached = quoteSubscriptions;
+    if (cached != null) return cached;
+    quoteSubscriptions = quoteSubscriptionCatalog.registry();
+    return quoteSubscriptions;
+  }
+
+  private static String normalizeSymbol(String value) {
+    return value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
   }
 
   private static byte[] pack(Object value) throws java.io.IOException {
