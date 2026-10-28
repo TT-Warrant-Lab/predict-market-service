@@ -6,11 +6,11 @@ COPY gradle ./gradle
 # Repositories cloned on Windows can retain CRLF here; Linux cannot execute
 # a shell script whose shebang ends in \r.
 RUN sed -i 's/\r$//' gradlew && chmod +x gradlew
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,id=predict-market-service-gradle,target=/root/.gradle,sharing=locked \
     ./gradlew dependencies --console=plain --no-daemon
 
 COPY src ./src
-RUN --mount=type=cache,target=/root/.gradle \
+RUN --mount=type=cache,id=predict-market-service-gradle,target=/root/.gradle,sharing=locked \
     ./gradlew bootJar -x test --console=plain --no-daemon
 
 FROM eclipse-temurin:25-jre-jammy
