@@ -1,5 +1,6 @@
-package com.fadx.predict_market_service.core.messaging.subscription;
+package com.fadx.predict_market_service.core.messaging.listener;
 
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteRoute;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
@@ -10,8 +11,8 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class HoseSymbolListener extends StaticJsonQuoteListener {
-  public HoseSymbolListener(ObjectMapper objectMapper) {
+public final class HnxSymbolListener extends StaticJsonQuoteListener {
+  public HnxSymbolListener(ObjectMapper objectMapper) {
     super(objectMapper);
   }
 
@@ -22,21 +23,17 @@ public final class HoseSymbolListener extends StaticJsonQuoteListener {
 
   @Override
   public Set<String> symbols() {
-    return market("HOSE");
-  }
-
-  private Set<String> market(String code) {
     try (InputStream in = getClass().getResourceAsStream("/static/symbol_static_data.json")) {
       List<Map<String, Object>> rows = objectMapper.readValue(in, new TypeReference<>() {});
       Set<String> out = new LinkedHashSet<>();
       rows.stream()
-          .filter(row -> code.equals(row.get("m")))
+          .filter(row -> "HNX".equals(row.get("m")))
           .map(row -> normalize(String.valueOf(row.get("s"))))
           .filter(s -> !s.isEmpty())
           .forEach(out::add);
       return out;
     } catch (Exception e) {
-      throw new IllegalStateException("Cannot load " + code, e);
+      throw new IllegalStateException("Cannot load HNX", e);
     }
   }
 }

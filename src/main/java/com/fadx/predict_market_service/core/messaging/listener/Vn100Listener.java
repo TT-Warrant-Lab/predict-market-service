@@ -1,5 +1,6 @@
-package com.fadx.predict_market_service.core.messaging.subscription;
+package com.fadx.predict_market_service.core.messaging.listener;
 
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteRoute;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;
@@ -10,8 +11,8 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class Vn30Listener extends StaticJsonQuoteListener {
-  public Vn30Listener(ObjectMapper objectMapper) {
+public final class Vn100Listener extends StaticJsonQuoteListener {
+  public Vn100Listener(ObjectMapper objectMapper) {
     super(objectMapper);
   }
 
@@ -22,17 +23,13 @@ public final class Vn30Listener extends StaticJsonQuoteListener {
 
   @Override
   public Set<String> symbols() {
-    return indexes("VN30");
-  }
-
-  private Set<String> indexes(String index) {
     try (InputStream in = getClass().getResourceAsStream("/static/indexStockList.json")) {
-      Map<String, List<String>> values = objectMapper.readValue(in, new TypeReference<>() {});
+      Map<String, List<String>> data = objectMapper.readValue(in, new TypeReference<>() {});
       Set<String> out = new LinkedHashSet<>();
-      values.getOrDefault(index, List.of()).forEach(v -> out.add(normalize(v)));
+      data.getOrDefault("VN100", List.of()).forEach(v -> out.add(normalize(v)));
       return out;
     } catch (Exception e) {
-      throw new IllegalStateException("Cannot load " + index, e);
+      throw new IllegalStateException("Cannot load VN100", e);
     }
   }
 }

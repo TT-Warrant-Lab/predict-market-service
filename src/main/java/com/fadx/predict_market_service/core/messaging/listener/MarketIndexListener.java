@@ -1,6 +1,8 @@
-package com.fadx.predict_market_service.core.messaging.subscription;
+package com.fadx.predict_market_service.core.messaging.listener;
 
 import java.util.Set;
+
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteRoute;
 import org.springframework.stereotype.Component;
 
 @Component

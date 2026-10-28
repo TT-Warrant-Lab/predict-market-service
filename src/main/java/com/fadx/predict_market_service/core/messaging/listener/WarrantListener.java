@@ -1,5 +1,6 @@
-package com.fadx.predict_market_service.core.messaging.subscription;
+package com.fadx.predict_market_service.core.messaging.listener;
 
+import com.fadx.predict_market_service.core.messaging.subscription.QuoteRoute;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.InputStream;

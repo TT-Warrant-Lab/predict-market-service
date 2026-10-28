@@ -3,6 +3,8 @@ package com.fadx.predict_market_service.core.messaging.subscription;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import com.fadx.predict_market_service.core.messaging.listener.QuoteSubscriptionListener;
 import org.springframework.stereotype.Component;
 
 @Component

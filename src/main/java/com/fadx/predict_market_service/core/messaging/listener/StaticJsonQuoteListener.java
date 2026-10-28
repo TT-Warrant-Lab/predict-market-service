@@ -1,4 +1,4 @@
-package com.fadx.predict_market_service.core.messaging.subscription;
+package com.fadx.predict_market_service.core.messaging.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.Locale;
