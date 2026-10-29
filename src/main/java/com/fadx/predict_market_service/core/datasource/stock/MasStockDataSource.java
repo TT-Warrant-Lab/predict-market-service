@@ -23,8 +23,8 @@ public class MasStockDataSource implements StockDataSource {
   public MasStockDataSource(
       RestClient.Builder builder,
       ObjectMapper mapper,
-      @Value("${app.mas-api.base-url:https://masboard.masvn.com}") String baseUrl,
-      @Value("${app.mas-api.stock-endpoint:/api/v2/vs}") String endpoint) {
+      @Value("${app.mas-api.base-url}") String baseUrl,
+      @Value("${app.mas-api.stock-endpoint}") String endpoint) {
     this.client = builder.baseUrl(baseUrl).build();
     this.mapper = mapper;
     this.endpoint = endpoint;

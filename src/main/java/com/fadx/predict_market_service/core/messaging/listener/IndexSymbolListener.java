@@ -11,8 +11,8 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 @Component
-public final class Vn30Listener extends StaticJsonQuoteListener {
-  public Vn30Listener(ObjectMapper objectMapper) {
+public final class IndexSymbolListener extends StaticJsonQuoteListener {
+  public IndexSymbolListener(ObjectMapper objectMapper) {
     super(objectMapper);
   }
 
@@ -23,17 +23,22 @@ public final class Vn30Listener extends StaticJsonQuoteListener {
 
   @Override
   public Set<String> symbols() {
-    return indexes("VN30");
+    return indexes("VN30", "VN100");
   }
 
-  private Set<String> indexes(String index) {
+  private Set<String> indexes(String... indexes) {
     try (InputStream in = getClass().getResourceAsStream("/static/indexStockList.json")) {
       Map<String, List<String>> values = objectMapper.readValue(in, new TypeReference<>() {});
-      Set<String> out = new LinkedHashSet<>();
-      values.getOrDefault(index, List.of()).forEach(v -> out.add(normalize(v)));
-      return out;
-    } catch (Exception e) {
-      throw new IllegalStateException("Cannot load " + index, e);
+      Set<String> symbols = new LinkedHashSet<>();
+      for (String index : indexes) {
+        values.getOrDefault(index, List.of()).stream()
+            .map(StaticJsonQuoteListener::normalize)
+            .filter(symbol -> !symbol.isEmpty())
+            .forEach(symbols::add);
+      }
+      return symbols;
+    } catch (Exception exception) {
+      throw new IllegalStateException("Cannot load indexes " + List.of(indexes), exception);
     }
   }
 }

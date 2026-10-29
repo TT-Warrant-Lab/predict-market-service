@@ -19,8 +19,8 @@ public class MasTradingDataSource implements TradingDataSource {
   public MasTradingDataSource(
       RestClient.Builder builder,
       ObjectMapper mapper,
-      @Value("${app.mas-api.base-url:https://masboard.masvn.com}") String baseUrl,
-      @Value("${app.mas-api.trading-endpoint:/api/v1/tradingview}") String endpoint) {
+      @Value("${app.mas-api.base-url}") String baseUrl,
+      @Value("${app.mas-api.trading-endpoint}") String endpoint) {
     this.client = builder.baseUrl(baseUrl).build();
     this.mapper = mapper;
     this.endpoint = endpoint;

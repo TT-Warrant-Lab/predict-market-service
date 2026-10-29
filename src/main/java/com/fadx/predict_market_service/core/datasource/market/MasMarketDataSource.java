@@ -22,8 +22,8 @@ public class MasMarketDataSource implements MarketDataSource {
   public MasMarketDataSource(
       RestClient.Builder builder,
       ObjectMapper mapper,
-      @Value("${app.mas-api.base-url:https://masboard.masvn.com}") String baseUrl,
-      @Value("${app.mas-api.market-endpoint:/api/v1/market}") String marketEndpoint) {
+      @Value("${app.mas-api.base-url}") String baseUrl,
+      @Value("${app.mas-api.market-endpoint}") String marketEndpoint) {
     this.client = builder.baseUrl(baseUrl).build();
     this.mapper = mapper;
     this.marketEndpoint = marketEndpoint;

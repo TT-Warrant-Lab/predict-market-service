@@ -13,8 +13,15 @@ spring:
 app:
   security:
     internal-key: test-internal-key
+  mas-api:
+    base-url: https://example.test
+    stock-endpoint: /api/v2/vs
+    market-endpoint: /api/v1/market
+    trading-endpoint: /api/v1/tradingview
   mas-realtime:
     enabled: false
+  static-data:
+    sync-dir: build/test-static-data
 
 redis:
   host: localhost

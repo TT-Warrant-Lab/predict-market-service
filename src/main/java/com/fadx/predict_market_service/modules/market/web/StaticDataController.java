@@ -26,7 +26,7 @@ public class StaticDataController {
 
   private final IndexTopMoversService indexTopMoversService;
 
-  @org.springframework.beans.factory.annotation.Value("${app.static-data.sync-dir:data/static}")
+  @org.springframework.beans.factory.annotation.Value("${app.static-data.sync-dir}")
   private String syncDirectory;
 
   private static final String INDEX_STOCK_LIST_PATH = "static/indexStockList.json";

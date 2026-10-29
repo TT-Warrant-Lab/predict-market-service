@@ -1,6 +1,7 @@
 .gradle/
-build/
+/build/
 out/
 *.iml
 .idea/
 .DS_Store
+/.env
