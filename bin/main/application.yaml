@@ -1,29 +1,20 @@
 server:
-  port: ${MARKET_SERVICE_PORT}
-
-logging:
-  level:
-    # Kafka can repeatedly report missing/refreshing metadata while topics settle.
-    # Keep the MAS receive trace visible without filling Docker logs with warnings.
-    org.apache.kafka.clients.NetworkClient: ERROR
+  port: ${SERVER_PORT:8003}
 
 spring:
-  config:
-    import: optional:file:../predict-deploy/.env[.properties]
   application:
     name: predict-market-service
   datasource:
-    url: ${DATASOURCE_URL}
-    username: ${POSTGRES_USER}
-    password: ${POSTGRES_PASSWORD}
-    driver-class-name: org.postgresql.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/fadx_home}
+    username: ${SPRING_DATASOURCE_USERNAME:fadx}
+    password: ${SPRING_DATASOURCE_PASSWORD:}
   jpa:
     hibernate:
-      ddl-auto: ${JPA_HIBERNATE_DDL_AUTO}
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
   kafka:
-    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS}
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     consumer:
-      group-id: ${MARKET_SERVICE_KAFKA_CONSUMER_GROUP_ID}
+      group-id: ${SPRING_KAFKA_CONSUMER_GROUP_ID:predict-market-service-group}
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
@@ -33,37 +24,36 @@ spring:
 
 app:
   security:
-    internal-key: ${MARKET_SERVICE_API_KEY}
+    internal-key: ${APP_INTERNAL_KEY:}
   mas-api:
-    base-url: ${MARKET_SERVICE_MAS_BASE_URL}
-    insecure-skip-tls-verify: ${MARKET_SERVICE_SKIP_TLS_VERIFY:false}
-    stock-endpoint: ${MARKET_SERVICE_MAS_STOCK_ENDPOINT}
-    market-endpoint: ${MARKET_SERVICE_MAS_MARKET_ENDPOINT}
-    trading-endpoint: ${MARKET_SERVICE_MAS_TRADING_ENDPOINT}
+    base-url: ${MAS_BASE_URL:https://masboard.masvn.com}
+    stock-endpoint: ${MAS_STOCK_ENDPOINT:/api/v2/vs}
+    market-endpoint: ${MAS_MARKET_ENDPOINT:/api/v1/market}
+    trading-endpoint: ${MAS_TRADING_ENDPOINT:/api/v1/tradingview}
   mas-realtime:
-    enabled: ${MARKET_SERVICE_MAS_DIRECT_SUBSCRIBER_ENABLED}
-    websocket-url: ${MARKET_SERVICE_MAS_WS_URL}
-    origin: ${MARKET_SERVICE_MAS_WS_ORIGIN}
-    cookie: ${MARKET_SERVICE_MAS_WS_COOKIE}
-    auth-token: ${MARKET_SERVICE_MAS_WS_AUTH_TOKEN}
-    subscription-batch-size: ${MARKET_SERVICE_MAS_WS_SUBSCRIPTION_BATCH_SIZE}
-    max-symbols: ${MARKET_SERVICE_MAS_WS_MAX_SYMBOLS}
-    reconnect-initial-delay-ms: ${MARKET_SERVICE_MAS_WS_RECONNECT_INITIAL_DELAY_MS}
-    reconnect-max-delay-ms: ${MARKET_SERVICE_MAS_WS_RECONNECT_MAX_DELAY_MS}
-    trace-enabled: ${MARKET_SERVICE_MAS_WS_TRACE_ENABLED}
+    enabled: ${MAS_DIRECT_SUBSCRIBER_ENABLED:true}
+    websocket-url: ${MAS_WS_URL:wss://masboard.masvn.com/ws/}
+    origin: ${MAS_WS_ORIGIN:https://masboard.masvn.com}
+    cookie: ${MAS_WS_COOKIE:}
+    auth-token: ${MAS_WS_AUTH_TOKEN:}
+    subscription-batch-size: ${MAS_WS_SUBSCRIPTION_BATCH_SIZE:20}
+    max-symbols: ${MAS_WS_MAX_SYMBOLS:0}
+    reconnect-initial-delay-ms: ${MAS_WS_RECONNECT_INITIAL_DELAY_MS:1000}
+    reconnect-max-delay-ms: ${MAS_WS_RECONNECT_MAX_DELAY_MS:30000}
+    trace-enabled: ${MAS_WS_TRACE_ENABLED:false}
   static-data:
-    sync-dir: ${STATIC_DATA_SYNC_DIR}
+    sync-dir: ${APP_STATIC_DATA_SYNC_DIR:data/static}
 config:
   warrant:
     analysis:
-      default-min-time-to-maturity: ${MARKET_SERVICE_WARRANT_MIN_MATURITY}
-      default-max-breakeven-increase-pct: ${MARKET_SERVICE_WARRANT_MAX_BREAKEVEN_PCT}
-      default-sort-by: ${MARKET_SERVICE_WARRANT_SORT_BY}
-      default-sort-direction: ${MARKET_SERVICE_WARRANT_SORT_DIRECTION}
+      default-min-time-to-maturity: ${APP_WARRANT_MIN_MATURITY:0.25}
+      default-max-breakeven-increase-pct: ${APP_WARRANT_MAX_BREAKEVEN_PCT:10}
+      default-sort-by: ${APP_WARRANT_SORT_BY:breakevenIncreasePct}
+      default-sort-direction: ${APP_WARRANT_SORT_DIRECTION:ASC}
 
 redis:
-  host: ${DATA_REDIS_HOST}
-  port: ${DATA_REDIS_PORT}
-  password: ${REDIS_PASSWORD}
-  database: ${DATA_REDIS_DATABASE}
-  timeout: ${DATA_REDIS_TIMEOUT}
+  host: ${SPRING_DATA_REDIS_HOST:localhost}
+  port: ${SPRING_DATA_REDIS_PORT:6379}
+  password: ${SPRING_DATA_REDIS_PASSWORD:}
+  database: ${SPRING_DATA_REDIS_DATABASE:0}
+  timeout: ${SPRING_DATA_REDIS_TIMEOUT:2000}
