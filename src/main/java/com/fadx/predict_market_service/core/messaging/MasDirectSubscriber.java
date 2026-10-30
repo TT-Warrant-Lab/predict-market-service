@@ -1,5 +1,25 @@
 package com.fadx.predict_market_service.core.messaging;
 
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_BIDOFFER;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_QUOTE;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_QUOTE_PRIORITY;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_WARRANT;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_BIDOFFER_PREFIX;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_MARKET_INIT;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_MARKET_STATUS;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_QUOTE_PREFIX;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.EVENT_HANDSHAKE;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.EVENT_SUBSCRIBE;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.EVENT_UNSUBSCRIBE;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_AUTH_TOKEN;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_BATCH;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_CHANNEL;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_EVENT;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_PUBLICATION;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_SYMBOL;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.HEARTBEAT_PING;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.HEARTBEAT_PONG;
+
 import com.fadx.predict_market_service.core.config.MasRealtimeProperties;
 import com.fadx.predict_market_service.core.messaging.subscription.QuoteSubscriptionCatalog;
 import com.fadx.predict_market_service.core.messaging.subscription.QuoteSubscriptionRegistry;
@@ -17,7 +37,6 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
@@ -55,26 +74,6 @@ public class MasDirectSubscriber {
   private static final ZoneId VIETNAM = ZoneId.of("Asia/Ho_Chi_Minh");
   private static final LocalTime OPEN = LocalTime.of(8, 58);
   private static final LocalTime CLOSE = LocalTime.of(15, 5);
-  private static final String QUOTE_PREFIX = "market.quote.";
-  private static final String BIDOFFER_PREFIX = "market.bidoffer.";
-  private static final String KAFKA_QUOTE_PREFIX = "market.quote";
-  private static final String KAFKA_QUOTE_PRIORITY_PREFIX = "market.quote.priority";
-  private static final Map<String, List<String>> INDEX_MAP = new LinkedHashMap<>();
-
-  static {
-    INDEX_MAP.put(
-        "VN-INDEX",
-        new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
-    INDEX_MAP.put(
-        "VN30", new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
-    INDEX_MAP.put(
-        "VN1000", new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
-    INDEX_MAP.put(
-        "HNXINDEX",
-        new ArrayList<>(Arrays.asList(KAFKA_QUOTE_PREFIX, KAFKA_QUOTE_PRIORITY_PREFIX)));
-    INDEX_MAP.put("HNX30", new ArrayList<>(List.of(KAFKA_QUOTE_PREFIX)));
-    INDEX_MAP.put("HNXUPCOMINDEX", new ArrayList<>(List.of(KAFKA_QUOTE_PREFIX)));
-  }
 
   private final MasRealtimeProperties properties;
   private final KafkaTemplate<String, Object> kafkaTemplate;
@@ -166,24 +165,25 @@ public class MasDirectSubscriber {
     requestID = 0;
     Map<String, Object> handshake = new LinkedHashMap<>();
     handshake.put(
-        "authToken", properties.getAuthToken().isBlank() ? null : properties.getAuthToken());
-    sendEvent("#handshake", handshake);
+        FIELD_AUTH_TOKEN, properties.getAuthToken().isBlank() ? null : properties.getAuthToken());
+    sendEvent(EVENT_HANDSHAKE, handshake);
     scheduler.schedule(() -> subscribeAll(webSocket), 500, TimeUnit.MILLISECONDS);
   }
 
   private void subscribeAll(WebSocket expectedSocket) {
     if (socket != expectedSocket || !desired) return;
-    sendEvent("#subscribe", Map.of("channel", "market.status", "batch", true));
-    sendEvent("#subscribe", Map.of("channel", "market.init", "batch", true));
+    sendEvent(EVENT_SUBSCRIBE, Map.of(FIELD_CHANNEL, CHANNEL_MARKET_STATUS, FIELD_BATCH, true));
+    sendEvent(EVENT_SUBSCRIBE, Map.of(FIELD_CHANNEL, CHANNEL_MARKET_INIT, FIELD_BATCH, true));
     List<String> channels = subscriptionChannels();
     int batchSize = Math.max(1, properties.getSubscriptionBatchSize());
     for (int start = 0; start < channels.size(); start += batchSize) {
       for (String channel : channels.subList(start, Math.min(start + batchSize, channels.size()))) {
-        sendEvent("#subscribe", Map.of("channel", channel));
+        sendEvent(EVENT_SUBSCRIBE, Map.of(FIELD_CHANNEL, channel));
       }
     }
     bidofferSymbols.forEach(
-        symbol -> sendEvent("#subscribe", Map.of("channel", BIDOFFER_PREFIX + symbol)));
+        symbol ->
+            sendEvent(EVENT_SUBSCRIBE, Map.of(FIELD_CHANNEL, CHANNEL_BIDOFFER_PREFIX + symbol)));
     log.info("MAS feed subscribed to {} channels", channels.size());
   }
 
@@ -194,7 +194,8 @@ public class MasDirectSubscriber {
       boolean changed = subscribe ? bidofferSymbols.add(symbol) : bidofferSymbols.remove(symbol);
       if (changed)
         sendEvent(
-            subscribe ? "#subscribe" : "#unsubscribe", Map.of("channel", BIDOFFER_PREFIX + symbol));
+            subscribe ? EVENT_SUBSCRIBE : EVENT_UNSUBSCRIBE,
+            Map.of(FIELD_CHANNEL, CHANNEL_BIDOFFER_PREFIX + symbol));
     }
   }
 
@@ -205,8 +206,7 @@ public class MasDirectSubscriber {
     if (maximum > 0 && selected.size() > maximum) selected = selected.subList(0, maximum);
     List<String> result = new ArrayList<>(selected.size());
     for (String symbol : selected) {
-      result.add(QUOTE_PREFIX + symbol);
-      //      result.add(BIDOFFER_PREFIX + symbol);
+      result.add(CHANNEL_QUOTE_PREFIX + symbol);
     }
     return result;
   }
@@ -214,7 +214,7 @@ public class MasDirectSubscriber {
   private void sendEvent(String eventName, Map<String, Object> payload) {
     WebSocket current = socket;
     if (current == null) return;
-    Map<String, Object> event = Map.of("e", List.of(eventName, payload, ++requestID));
+    Map<String, Object> event = Map.of(FIELD_EVENT, List.of(eventName, payload, ++requestID));
     try {
       current.sendBinary(ByteBuffer.wrap(pack(event)), true);
     } catch (Exception error) {
@@ -226,29 +226,30 @@ public class MasDirectSubscriber {
     try (MessageUnpacker unpacker = MessagePack.newDefaultUnpacker(frame)) {
       Object payload = unpack(unpacker.unpackValue());
       if (!(payload instanceof Map<?, ?> root)
-          || !(root.get("p") instanceof List<?> publication)
+          || !(root.get(FIELD_PUBLICATION) instanceof List<?> publication)
           || publication.size() < 2) return;
       if (!(publication.get(0) instanceof String channel)
           || !(publication.get(1) instanceof Map<?, ?>)) return;
-      if (!channel.startsWith(QUOTE_PREFIX) && !channel.startsWith(BIDOFFER_PREFIX)) return;
-      Object symbolValue = ((Map<?, ?>) publication.get(1)).get("s");
+      if (!channel.startsWith(CHANNEL_QUOTE_PREFIX) && !channel.startsWith(CHANNEL_BIDOFFER_PREFIX))
+        return;
+      Object symbolValue = ((Map<?, ?>) publication.get(1)).get(FIELD_SYMBOL);
       String symbol =
           symbolValue == null
               ? channel.substring(channel.lastIndexOf('.') + 1)
               : String.valueOf(symbolValue);
 
-      if (channel.startsWith(BIDOFFER_PREFIX)) {
+      if (channel.startsWith(CHANNEL_BIDOFFER_PREFIX)) {
         if (bidofferSymbols.contains(normalizeSymbol(symbol)))
-          publish("market.bidoffer", symbol, payload);
+          publish(REALTIME_OUTBOUND_BIDOFFER, symbol, payload);
         return;
       }
       switch (quoteSubscriptions().route(normalizeSymbol(symbol))) {
-        case WARRANT -> publish("market.quote.warrant", symbol, payload);
+        case WARRANT -> publish(REALTIME_OUTBOUND_WARRANT, symbol, payload);
         case PRIORITY -> {
-          publish("market.quote.priority", symbol, payload);
-          publish("market.quote", symbol, payload);
+          publish(REALTIME_OUTBOUND_QUOTE_PRIORITY, symbol, payload);
+          publish(REALTIME_OUTBOUND_QUOTE, symbol, payload);
         }
-        case COMMON -> publish("market.quote", symbol, payload);
+        case COMMON -> publish(REALTIME_OUTBOUND_QUOTE, symbol, payload);
         case NONE -> {}
       }
     } catch (Exception error) {
@@ -371,7 +372,7 @@ public class MasDirectSubscriber {
 
     @Override
     public CompletionStage<?> onText(WebSocket webSocket, CharSequence data, boolean last) {
-      if (last && "#1".contentEquals(data)) webSocket.sendText("#2", true);
+      if (last && HEARTBEAT_PING.contentEquals(data)) webSocket.sendText(HEARTBEAT_PONG, true);
       webSocket.request(1);
       return CompletableFuture.completedFuture(null);
     }

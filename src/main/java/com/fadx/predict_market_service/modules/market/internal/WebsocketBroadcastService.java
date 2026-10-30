@@ -1,5 +1,12 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_BIDOFFER;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_QUOTE;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_BIDOFFER_PREFIX;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_QUOTE_PREFIX;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_PUBLICATION;
+import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.FIELD_SYMBOL;
+
 import com.fadx.predict_market_service.core.api.RealtimePublisher;
 import com.fadx.predict_market_service.modules.common.dto.BidOfferQuote;
 import com.fadx.predict_market_service.modules.common.dto.MovingAverage;
@@ -15,7 +22,6 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,22 +47,17 @@ public class WebsocketBroadcastService {
    * just pushed within minPushIntervalMs.
    */
   public void onMarketUpdate(String rawJsonPayload) {
-    JsonNode root = null;
-    JsonNode pNode = null;
-    String topicAndSymbol = "";
     try {
-      root = objectMapper.readTree(rawJsonPayload);
-      pNode = root.get("p");
+      JsonNode root = objectMapper.readTree(rawJsonPayload);
+      JsonNode pNode = root.get(FIELD_PUBLICATION);
       if (pNode == null || !pNode.isArray() || pNode.size() < 2) {
         return;
       }
-      topicAndSymbol = pNode.get(0).asText("");
-
-    } catch (JsonProcessingException e) {
-      log.error("Error parsing Kafka payload: {}", e.getMessage(), e);
-    }
-    if (pNode != null && !Objects.equals(topicAndSymbol, "")) {
-      if (topicAndSymbol.startsWith("market.quote.")) {
+      String channel = pNode.get(0).asText("");
+      if (channel.isBlank()) {
+        return;
+      }
+      if (channel.startsWith(CHANNEL_QUOTE_PREFIX)) {
         // Pass through the full provider quote object instead of converting it to QuoteData.
         // A stock quote currently includes 18 fields:
         // s, ss, ti, o, h, l, c, ch, r, mv, vo, va, mb, a, ba, frBvo, frSvo, frCr.
@@ -64,17 +65,19 @@ public class WebsocketBroadcastService {
         // prevents newly added provider fields from silently disappearing before reaching the FE.
         JsonNode quote = pNode.get(1);
         String symbol =
-            quote != null && quote.hasNonNull("s")
-                ? quote.get("s").asText()
-                : topicAndSymbol.substring("market.quote.".length());
-        handleSingleUpdate(symbol, quote, topicAndSymbol);
-      } else if (topicAndSymbol.startsWith("market.bidoffer.")) {
-        for (BidOfferQuote bidOffer : parseBidOffer(pNode.get(1), topicAndSymbol)) {
-          handleSingleUpdate(bidOffer.getS(), bidOffer, topicAndSymbol);
+            quote != null && quote.hasNonNull(FIELD_SYMBOL)
+                ? quote.get(FIELD_SYMBOL).asText()
+                : channel.substring(CHANNEL_QUOTE_PREFIX.length());
+        handleSingleUpdate(symbol, quote, REALTIME_OUTBOUND_QUOTE);
+      } else if (channel.startsWith(CHANNEL_BIDOFFER_PREFIX)) {
+        for (BidOfferQuote bidOffer : parseBidOffer(pNode.get(1), channel)) {
+          handleSingleUpdate(bidOffer.getS(), bidOffer, REALTIME_OUTBOUND_BIDOFFER);
         }
       } else {
-        log.warn("Unknown topic pattern, skipping: {}", topicAndSymbol);
+        log.warn("Unknown MAS channel pattern, skipping: {}", channel);
       }
+    } catch (JsonProcessingException e) {
+      log.error("Error parsing Kafka payload: {}", e.getMessage(), e);
     }
   }
 
@@ -287,7 +290,7 @@ public class WebsocketBroadcastService {
   public void onWarrantAnalysis(String rawPayload) {
     try {
       for (WarrantAnalysis warrant : parseWarrantAnalysis(objectMapper.readTree(rawPayload))) {
-        handleSingleUpdate(warrant.getS(), warrant, "market.analysis." + warrant.getS());
+        handleSingleUpdate(warrant.getS(), warrant, "realtime.outbound.analysis." + warrant.getS());
       }
     } catch (JsonProcessingException e) {
       log.error("Error parsing warrant analysis payload: {}", e.getMessage(), e);

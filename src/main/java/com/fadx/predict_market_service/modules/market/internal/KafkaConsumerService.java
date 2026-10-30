@@ -1,5 +1,10 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.ANALYSIS_WARRANT;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_TREND;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.SIGNALS;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.USER_NOTIFICATION;
+
 import com.fadx.predict_market_service.core.api.RealtimePublisher;
 import com.fadx.predict_market_service.modules.common.dto.TickerChartPointDto;
 import com.fadx.predict_market_service.modules.common.entity.StockMarketLatest;
@@ -44,9 +49,6 @@ public class KafkaConsumerService {
   private static final int QUOTE_WORKER_COUNT = 5;
   private static final int QUOTE_QUEUE_CAPACITY = 1000;
 
-  private static final String KAFKA_TREND_TOPIC = "market.trend";
-  private static final String STRATEGY_SIGNALS_TOPIC = "signals";
-  private static final String USER_NOTIFICATION_TOPIC = "user.notification";
   private static final String TREND_TYPE_TICKER = "ticker";
   private static final String TREND_TYPE_FOREIGN = "foreign";
   private static final Map<String, Double> INDEX_REF_CAP_MAP =
@@ -118,7 +120,7 @@ public class KafkaConsumerService {
    * JSON tree and kept intact. This prevents predict-service from silently dropping fields that
    * strategy-engine may add before a shared, versioned contract is introduced.
    */
-  @KafkaListener(topics = STRATEGY_SIGNALS_TOPIC, groupId = "prediction-group")
+  @KafkaListener(topics = SIGNALS, groupId = "prediction-group")
   public void listenStrategySignals(ConsumerRecord<String, String> record) {
     String rawPayload = record.value();
     if (rawPayload == null || rawPayload.isBlank()) {
@@ -209,10 +211,10 @@ public class KafkaConsumerService {
     Map<String, Object> message = new LinkedHashMap<>();
     message.put("user", normalizedUser);
     message.put("payload", payload);
-    kafkaTemplate.send(USER_NOTIFICATION_TOPIC, normalizedUser, message);
+    kafkaTemplate.send(USER_NOTIFICATION, normalizedUser, message);
   }
 
-  @KafkaListener(topics = "analysis.warrant", groupId = "prediction-group")
+  @KafkaListener(topics = ANALYSIS_WARRANT, groupId = "prediction-group")
   public void listenAnalysisWarrant(ConsumerRecord<String, String> record) {
     String rawPayload = record.value() != null ? record.value() : "";
     broadcastService.onWarrantAnalysis(rawPayload);
@@ -430,7 +432,7 @@ public class KafkaConsumerService {
             TickerChartPointDto tickerPoint =
                 new TickerChartPointDto(minuteBucket, currentPrice, tickerVolumeDelta, totalVolume);
             realtimePublisher.publish(
-                ticker, tickerPoint, KAFKA_TREND_TOPIC + "." + TREND_TYPE_TICKER);
+                ticker, tickerPoint, REALTIME_OUTBOUND_TREND + "." + TREND_TYPE_TICKER);
           } catch (Exception e) {
             log.error("[Kafka-Trend] Gửi ticker trend thất bại cho ticker={}", ticker, e);
           }
