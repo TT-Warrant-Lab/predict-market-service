@@ -49,18 +49,6 @@ jobs:
             exit 1
           fi
 
-      - name: Debug OIDC claims
-        shell: bash
-        run: |
-          TOKEN=$(curl -fsS \
-            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
-            "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=${{ secrets.TS_AUDIENCE }}" \
-            | jq -r '.value')
-
-          PAYLOAD=$(echo "$TOKEN" | cut -d. -f2 | base64 -d 2>/dev/null)
-
-          echo "$PAYLOAD" | jq '{iss, sub, aud, repository}'
-
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
