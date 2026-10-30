@@ -1,0 +1,136 @@
+name: CD
+
+on:
+  workflow_dispatch:
+    inputs:
+      image_tag:
+        description: Docker image tag to deploy
+        required: true
+        default: latest
+        type: string
+
+permissions:
+  contents: read
+  packages: read
+  id-token: write
+
+concurrency:
+  group: predict-market-service-deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy predict-market-service to Ubuntu
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Validate deployment parameters
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          SERVER_ENV_FILE: ${{ secrets.SERVER_ENV_FILE }}
+          SERVER_DOCKER_NETWORK: ${{ secrets.SERVER_DOCKER_NETWORK }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$IMAGE_TAG" =~ ^[a-zA-Z0-9_][a-zA-Z0-9_.-]{0,127}$ ]]; then
+            echo "Invalid Docker image tag"
+            exit 1
+          fi
+
+          if [[ ! "$SERVER_ENV_FILE" =~ ^/[a-zA-Z0-9_./-]+$ ]]; then
+            echo "Invalid server environment file path"
+            exit 1
+          fi
+
+          if [[ -n "$SERVER_DOCKER_NETWORK" ]] &&
+             [[ ! "$SERVER_DOCKER_NETWORK" =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+            echo "Invalid Docker network name"
+            exit 1
+          fi
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v4
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          audience: ${{ secrets.TS_AUDIENCE }}
+          tags: tag:ci
+
+      - name: Configure SSH
+        env:
+          SSH_KEY: ${{ secrets.SERVER_SSH_KEY }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+
+          ssh-keyscan -H "$SERVER_HOST" >> ~/.ssh/known_hosts
+
+      - name: Log in to GHCR on server
+        env:
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$GHCR_TOKEN" |
+            ssh -i ~/.ssh/id_ed25519 \
+              "$SERVER_USER@$SERVER_HOST" \
+              "docker login ghcr.io -u '$GITHUB_ACTOR' --password-stdin"
+
+      - name: Deploy Docker image
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          SERVER_HOST: ${{ secrets.SERVER_HOST }}
+          SERVER_USER: ${{ secrets.SERVER_USER }}
+          SERVER_ENV_FILE: ${{ secrets.SERVER_ENV_FILE }}
+          SERVER_DOCKER_NETWORK: ${{ secrets.SERVER_DOCKER_NETWORK }}
+        run: |
+          IMAGE_REPOSITORY="ghcr.io/${GITHUB_REPOSITORY,,}"
+          IMAGE="$IMAGE_REPOSITORY:$IMAGE_TAG"
+
+          ssh -i ~/.ssh/id_ed25519 \
+            "$SERVER_USER@$SERVER_HOST" \
+            bash -s -- "$IMAGE" "$SERVER_ENV_FILE" "$SERVER_DOCKER_NETWORK" <<'EOF'
+          set -euo pipefail
+
+          IMAGE="$1"
+          ENV_FILE="$2"
+          DOCKER_NETWORK="$3"
+
+          if [ ! -f "$ENV_FILE" ]; then
+            echo "Server environment file not found: $ENV_FILE" >&2
+            exit 1
+          fi
+
+          docker pull "$IMAGE"
+          docker rm -f predict-market-service || true
+
+          DOCKER_ARGS=(
+            --name predict-market-service
+            --restart unless-stopped
+            --env-file "$ENV_FILE"
+            -p 127.0.0.1:8003:8003
+          )
+
+          if [ -n "$DOCKER_NETWORK" ]; then
+            docker network inspect "$DOCKER_NETWORK" >/dev/null
+            DOCKER_ARGS+=(--network "$DOCKER_NETWORK")
+          fi
+
+          docker run -d "${DOCKER_ARGS[@]}" "$IMAGE"
+
+          CONTAINER_STATUS=$(docker inspect \
+            --format '{{.State.Status}}' \
+            predict-market-service)
+
+          if [ "$CONTAINER_STATUS" != "running" ]; then
+            echo "Container is not running"
+            docker logs --tail 100 predict-market-service
+            exit 1
+          fi
+
+          docker ps --filter name=predict-market-service
+          EOF

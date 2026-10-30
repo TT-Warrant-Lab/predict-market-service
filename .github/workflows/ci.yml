@@ -7,9 +7,10 @@ on:
 
 permissions:
   contents: read
+  packages: write
 
 jobs:
-  build:
+  ci:
     name: Build and test predict-market-service
     runs-on: ubuntu-latest
 
@@ -28,3 +29,22 @@ jobs:
 
       - name: Check formatting, test, and build
         run: ./gradlew clean spotlessCheck build --no-daemon
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        env:
+          IMAGE_REPOSITORY: ghcr.io/${{ github.repository }}
+        run: |
+          IMAGE_REPOSITORY="${IMAGE_REPOSITORY,,}"
+          docker build \
+            --tag "$IMAGE_REPOSITORY:${GITHUB_SHA}" \
+            --tag "$IMAGE_REPOSITORY:latest" \
+            .
+          docker push "$IMAGE_REPOSITORY:${GITHUB_SHA}"
+          docker push "$IMAGE_REPOSITORY:latest"
