@@ -1,12 +1,13 @@
 package com.fadx.predict_market_service.core.datasource.stock;
 
+import com.fadx.predict_market_service.core.config.MasApiProperties;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.ForeignHistoryRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyEventRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyNewsRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyOverviewRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.stock.company.CompanyProfileRecord;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -21,13 +22,13 @@ public class MasStockDataSource implements StockDataSource {
   private final String endpoint;
 
   public MasStockDataSource(
-      RestClient.Builder builder,
-      ObjectMapper mapper,
-      @Value("${app.mas-api.base-url}") String baseUrl,
-      @Value("${app.mas-api.stock-endpoint}") String endpoint) {
-    this.client = builder.baseUrl(baseUrl).build();
+      RestClient restClient,
+      @Qualifier("masRestClient") RestClient masRestClient,
+      MasApiProperties properties,
+      ObjectMapper mapper) {
+    this.client = properties.isInsecureSkipTlsVerify() ? masRestClient : restClient;
     this.mapper = mapper;
-    this.endpoint = endpoint;
+    this.endpoint = properties.getStockEndpoint();
   }
 
   public List<ForeignHistoryRecord> foreignHistory(

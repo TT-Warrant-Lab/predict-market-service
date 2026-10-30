@@ -36,6 +36,7 @@ app:
     internal-key: ${MARKET_SERVICE_API_KEY}
   mas-api:
     base-url: ${MARKET_SERVICE_MAS_BASE_URL}
+    insecure-skip-tls-verify: ${MARKET_SERVICE_SKIP_TLS_VERIFY:false}
     stock-endpoint: ${MARKET_SERVICE_MAS_STOCK_ENDPOINT}
     market-endpoint: ${MARKET_SERVICE_MAS_MARKET_ENDPOINT}
     trading-endpoint: ${MARKET_SERVICE_MAS_TRADING_ENDPOINT}

@@ -1,6 +1,7 @@
 package com.fadx.predict_market_service;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -32,5 +33,17 @@ class PredictMarketServiceApplicationTests {
     mockMvc
         .perform(get("/api/not-found").header("X-Internal-Key", "test-internal-key"))
         .andExpect(status().isNotFound());
+  }
+
+  @Test
+  void exposesInternalKeyAuthorizationInOpenApi() throws Exception {
+    mockMvc
+        .perform(get("/v3/api-docs"))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.components.securitySchemes.internalKey.type").value("apiKey"))
+        .andExpect(jsonPath("$.components.securitySchemes.internalKey.in").value("header"))
+        .andExpect(
+            jsonPath("$.components.securitySchemes.internalKey.name").value("X-Internal-Key"))
+        .andExpect(jsonPath("$.security[0].internalKey").isArray());
   }
 }

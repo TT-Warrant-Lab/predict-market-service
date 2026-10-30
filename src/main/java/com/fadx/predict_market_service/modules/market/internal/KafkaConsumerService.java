@@ -1,7 +1,9 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
 import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.ANALYSIS_WARRANT;
-import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_TREND;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.INDEX_IMPACT;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.MARKET_TREND_FOREIGN;
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.MARKET_TREND_TICKER;
 import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.SIGNALS;
 import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.USER_NOTIFICATION;
 
@@ -49,8 +51,6 @@ public class KafkaConsumerService {
   private static final int QUOTE_WORKER_COUNT = 5;
   private static final int QUOTE_QUEUE_CAPACITY = 1000;
 
-  private static final String TREND_TYPE_TICKER = "ticker";
-  private static final String TREND_TYPE_FOREIGN = "foreign";
   private static final Map<String, Double> INDEX_REF_CAP_MAP =
       Map.of(
           "VN-INDEX",
@@ -392,7 +392,7 @@ public class KafkaConsumerService {
             ForeignChartPointDto foreignPoint =
                 new ForeignChartPointDto(
                     minuteBucket, foreignDelta[0], foreignDelta[1], foreignDelta[2], foreignNet);
-            realtimePublisher.publish(ticker, foreignPoint, TREND_TYPE_FOREIGN + "." + ticker);
+            realtimePublisher.publish(ticker, foreignPoint, MARKET_TREND_FOREIGN);
           } catch (Exception e) {
             log.error("[Kafka-Trend] Gửi foreign trend thất bại cho ticker={}", ticker, e);
           }
@@ -431,8 +431,7 @@ public class KafkaConsumerService {
           try {
             TickerChartPointDto tickerPoint =
                 new TickerChartPointDto(minuteBucket, currentPrice, tickerVolumeDelta, totalVolume);
-            realtimePublisher.publish(
-                ticker, tickerPoint, REALTIME_OUTBOUND_TREND + "." + TREND_TYPE_TICKER);
+            realtimePublisher.publish(ticker, tickerPoint, MARKET_TREND_TICKER);
           } catch (Exception e) {
             log.error("[Kafka-Trend] Gửi ticker trend thất bại cho ticker={}", ticker, e);
           }
@@ -586,7 +585,7 @@ public class KafkaConsumerService {
                   "timestamp",
                   System.currentTimeMillis());
 
-          realtimePublisher.publish(symbol, impactPayload, "index-impact." + symbol);
+          realtimePublisher.publish(symbol, impactPayload, INDEX_IMPACT);
         }
       }
     } catch (Exception e) {

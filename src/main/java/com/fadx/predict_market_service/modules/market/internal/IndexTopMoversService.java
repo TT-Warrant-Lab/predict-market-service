@@ -1,6 +1,5 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
-import com.fadx.predict_market_service.core.api.RealtimePublisher;
 import com.fadx.predict_market_service.modules.common.repositories.StockMarketLatestRepository;
 import com.fadx.predict_market_service.modules.market.api.dtos.MarketStatusResponse;
 import com.fadx.predict_market_service.modules.symbol.internal.entity.Symbol;
@@ -24,7 +23,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.core.io.ClassPathResource;
@@ -51,13 +49,11 @@ public class IndexTopMoversService {
 
   private final RedisService redisService;
   private final ObjectMapper objectMapper;
-  private final RealtimePublisher realtimePublisher;
   private final StockMarketLatestRepository stockMarketLatestRepository;
   private final SymbolRepository symbolRepository;
 
   private Map<String, List<String>> symbolsByIndex = Map.of();
   private Map<String, Set<String>> indexesBySymbol = Map.of();
-  private final Map<String, String> lastBroadcastFingerprint = new ConcurrentHashMap<>();
 
   @PostConstruct
   void loadIndexConstituents() {
@@ -258,17 +254,8 @@ public class IndexTopMoversService {
     result.put("updatedAt", Instant.now().toEpochMilli());
 
     try {
-      String snapshotFingerprint = objectMapper.writeValueAsString(snapshot);
       redisService.setWithExpiry(
           cacheKey, objectMapper.writeValueAsString(result), CACHE_TTL_SECONDS);
-
-      // FE replaces its complete state from this snapshot, so it never needs to infer a removal
-      // or a rank change from a one-symbol delta. updatedAt is deliberately excluded from this
-      // comparison; otherwise every recomputation would cause an unnecessary WebSocket event.
-      String previousFingerprint = lastBroadcastFingerprint.put(cacheKey, snapshotFingerprint);
-      if (!snapshotFingerprint.equals(previousFingerprint)) {
-        realtimePublisher.publish(index, result, "top-movers." + index);
-      }
     } catch (Exception exception) {
       log.error("Unable to cache top movers for index={}", index, exception);
     }

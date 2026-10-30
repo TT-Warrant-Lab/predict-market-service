@@ -1,9 +1,10 @@
 package com.fadx.predict_market_service.core.datasource.trading;
 
+import com.fadx.predict_market_service.core.config.MasApiProperties;
 import com.fadx.predict_market_service.modules.market.api.dtos.trading.DividendRecord;
 import com.fadx.predict_market_service.modules.market.api.dtos.trading.OHLCVResponse;
 import java.util.List;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -17,13 +18,13 @@ public class MasTradingDataSource implements TradingDataSource {
   private final String endpoint;
 
   public MasTradingDataSource(
-      RestClient.Builder builder,
-      ObjectMapper mapper,
-      @Value("${app.mas-api.base-url}") String baseUrl,
-      @Value("${app.mas-api.trading-endpoint}") String endpoint) {
-    this.client = builder.baseUrl(baseUrl).build();
+      RestClient restClient,
+      @Qualifier("masRestClient") RestClient masRestClient,
+      MasApiProperties properties,
+      ObjectMapper mapper) {
+    this.client = properties.isInsecureSkipTlsVerify() ? masRestClient : restClient;
     this.mapper = mapper;
-    this.endpoint = endpoint;
+    this.endpoint = properties.getTradingEndpoint();
   }
 
   @Override

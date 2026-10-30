@@ -1,5 +1,6 @@
 package com.fadx.predict_market_service.modules.market.internal;
 
+import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.MARKET_ANALYSIS;
 import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_BIDOFFER;
 import static com.fadx.predict_market_service.core.constant.KafkaTopicConstants.REALTIME_OUTBOUND_QUOTE;
 import static com.fadx.predict_market_service.core.constant.MasWebSocketConstants.CHANNEL_BIDOFFER_PREFIX;
@@ -290,7 +291,7 @@ public class WebsocketBroadcastService {
   public void onWarrantAnalysis(String rawPayload) {
     try {
       for (WarrantAnalysis warrant : parseWarrantAnalysis(objectMapper.readTree(rawPayload))) {
-        handleSingleUpdate(warrant.getS(), warrant, "realtime.outbound.analysis." + warrant.getS());
+        handleSingleUpdate(warrant.getS(), warrant, MARKET_ANALYSIS);
       }
     } catch (JsonProcessingException e) {
       log.error("Error parsing warrant analysis payload: {}", e.getMessage(), e);
