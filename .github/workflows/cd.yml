@@ -48,7 +48,31 @@ jobs:
             echo "Invalid Docker network name"
             exit 1
           fi
-
+          
+      - name: Show GitHub OIDC Subject
+        shell: bash
+        run: |
+          set -euo pipefail
+      
+          RESPONSE=$(curl -fsS -G \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --data-urlencode "audience=debug" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL")
+      
+          TOKEN=$(echo "$RESPONSE" | jq -r '.value')
+      
+          TOKEN_PAYLOAD=$(echo "$TOKEN" | cut -d '.' -f2)
+      
+          echo "$TOKEN_PAYLOAD" | python3 -c '
+          import sys, json, base64
+          payload = sys.stdin.read().strip()
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          print("Subject:", claims["sub"])
+          print("Issuer:", claims["iss"])
+          print("Repository ID:", claims.get("repository_id"))
+          print("Owner ID:", claims.get("repository_owner_id"))
+          '
       - name: Connect to Tailscale
         uses: tailscale/github-action@v4
         with:
