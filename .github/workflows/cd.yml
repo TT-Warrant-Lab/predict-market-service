@@ -49,12 +49,43 @@ jobs:
             exit 1
           fi
 
-      - name: Connect to Tailscale
-        uses: tailscale/github-action@v4
-        with:
-          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
-          audience: ${{ secrets.TS_AUDIENCE }}
-          tags: tag:ci
+      - name: Debug GitHub OIDC Claims
+        shell: bash
+        env:
+          TS_AUDIENCE: ${{ secrets.TS_AUDIENCE }}
+          TS_CLIENT_ID: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+        run: |
+          set -euo pipefail
+      
+          if [[ -z "$TS_AUDIENCE" || -z "$TS_CLIENT_ID" ]]; then
+            echo "::error::Missing Tailscale credentials"
+            exit 1
+          fi
+      
+          EXPECTED_AUD="api.tailscale.com/$TS_CLIENT_ID"
+      
+          if [[ "$TS_AUDIENCE" != "$EXPECTED_AUD" ]]; then
+            echo "::error::Audience does not match Client ID"
+            exit 1
+          fi
+      
+          echo "Audience matches Client ID"
+      
+          curl -fsS --get \
+            -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            --data-urlencode "audience=$TS_AUDIENCE" \
+            "$ACTIONS_ID_TOKEN_REQUEST_URL" |
+            jq -r '.value' |
+            python3 -c '
+          import sys, json, base64
+          token = sys.stdin.read().strip()
+          payload = token.split(".")[1]
+          payload += "=" * (-len(payload) % 4)
+          claims = json.loads(base64.urlsafe_b64decode(payload))
+          for key in ("iss", "sub", "aud", "repository",
+                      "repository_id", "repository_owner_id"):
+              print("{}: {}".format(key, claims.get(key)))
+          '
 
       - name: Configure SSH
         env:
