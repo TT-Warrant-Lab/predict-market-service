@@ -27,7 +27,7 @@ jobs:
       - name: Validate deployment parameters
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
-          SERVER_ENV_FILE: ${{ secrets.MARKET_SERVER_ENV_FILE }}
+          SERVER_ENV_FILE: ${{ secrets.SERVER_ENV_FILE }}
           SERVER_DOCKER_NETWORK: ${{ secrets.SERVER_DOCKER_NETWORK }}
         shell: bash
         run: |
